@@ -9,9 +9,230 @@
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
     <title>Traveller</title>
+  <script type="text/javascript">
+
+            var headerpx= 50;
+            var footerpx= 50;
+
+
+            var windowwidth = window.innerWidth;
+            var windowheight = window.innerHeight;
+            var road=20;
+            var roadfromtop = 125;
+            var roadwidth=20;
+            var circlex = 150;
+            var circley = 100;
+            var circler =10;
+            var movex = 5;
+            var movey = 2*circler+2;
+            var roadblockwidthheight = 20;
+            var bgclr = "white";
+            var roadclr = "#000000";
+            var roadblkclr = "#000000";
+            var roadblkx=0;
+            var roadblky=0;
+            var timeoutID;
+            var roadblkmvrtime=50;
+
+
+
+            function drawShape(){
+                var canvas = document.getElementById('gamer');
+                
+                // get canvas for drawing
+                var ctx = canvas.getContext('2d'); 
+                
+             //   roadwidth = (canvas.height/5);
+             //   roadfromtop = canvas.height - roadwidth/2;
+                
+                // resize the canvas to fill browser window dynamically
+                window.addEventListener('resize', startGame, false);
+                
+                //Key press events
+                window.addEventListener('keydown',doKeyDown,true);
+
+                function reset(){
+                    windowwidth = window.innerWidth;
+                    windowheight = window.innerHeight;
+                    canvas.width = windowwidth-4;
+                    canvas.height = windowheight-4-headerpx-footerpx;                    
+                    roadwidth = (canvas.height/5);
+                    roadfromtop = canvas.height - roadwidth/2;
+                    road = roadfromtop-roadwidth/2-2;
+                    circley = road-circler;
+                    circlex = circler+2;
+                    roadblkx = windowwidth-roadblockwidthheight-4;
+                    roadblky = road-roadblockwidthheight;
+                    window.clearTimeout(timeoutID);
+                }
+
+                function stopGame(){
+                    startGame();
+                    window.clearTimeout(timeoutID);
+                }
+                
+                function startGame() {
+                    
+                    reset();
+                    // Work on browsers supporting Canvas tag.
+                    if (canvas.getContext){     
+                        drawBG();
+                        drawRoad();                        
+                        drawRoadBlock(roadblkx,roadblky,roadblockwidthheight,roadblockwidthheight);                        
+                        drawPerson(circlex, circley, circler);
+                        timeoutID = window.setTimeout(moveRoadBlk, roadblkmvrtime);
+                    } else {
+                        alert('You need Safari or Firefox 1.5+ to see this demo.');
+                    }
+                }
+                startGame();
+
+                function drawBG(){
+                    ctx.strokeStyle  = bgclr;
+                    ctx.lineWidth = 1;
+                    ctx.fillStyle = bgclr;
+                    ctx.fillRect(0,0,canvas.width,canvas.height);
+                }
+                
+                function drawRoad() {
+                    ctx.strokeStyle  = roadclr;
+                    ctx.fillStyle = roadclr;
+                    ctx.lineWidth = 1+roadwidth;
+                    ctx.beginPath();
+                    ctx.moveTo(0,roadfromtop);
+                    ctx.lineTo(windowwidth-4,roadfromtop);
+                    ctx.stroke();
+                }
+
+                function drawPerson(x,y,r) { 
+                    ctx.fillStyle = "purple";
+                    ctx.beginPath();
+                    ctx.arc(x,y,r, 0, Math.PI*2, true);
+                    ctx.fill();
+                    
+                    
+                }
+            
+                function refreshScreen(x,y,r) {                    
+                    //ctx.lineWidth = 1;
+                    //ctx.fillStyle = bgclr;
+                    //ctx.beginPath();
+                    //ctx.arc(x, y, r, 0, Math.PI*2, true);
+                    //ctx.fill();
+                    drawBG();
+                    drawRoad();                    
+                    drawRoadBlock(roadblkx,roadblky,roadblockwidthheight,roadblockwidthheight);
+                    drawPerson(x, y, r);
+                }
+
+                function drawRoadBlock(x,y,width,height) {
+                    ctx.fillStyle  = roadblkclr;
+                    ctx.lineWidth = 1;
+                    ctx.fillRect(x,y,width,height);
+                }
+                
+                function clearRoadBlock(x,y,width,height) {
+                    ctx.fillStyle  = bgclr;
+                    ctx.fillRect(x,y,width,height);
+                }
+                
+                function doKeyDown(evt){                    
+                    tempx=circlex;
+                    tempy=circley;
+                    up=0;
+                    switch (evt.keyCode) {
+                        case 38:  /* Up arrow was pressed */                            
+                            tempy -= movey;
+                            tempx += movex;
+                            up=1;
+                            break;
+                        case 40:  /* Down arrow was pressed */
+                            tempy += movey;
+                            break;
+                        case 39:  /* Right arrow was pressed */
+                            tempx += movex;
+                            break;
+                        case 37:  /* Left arrow was pressed */
+                            tempx -= movex;
+                            break;
+                    }
+                    playareaxymin=circler+1;
+                    playareaymax = (roadfromtop-roadwidth/2-circler-2);
+                    playareaxmax = (windowwidth-circler-6);
+                    tempy = tempy.clamp(playareaxymin,playareaymax);
+                    tempx = tempx.clamp(playareaxymin,playareaxmax);                    
+                    if(detectCollision(tempx,tempy,circler,roadblkx,roadblky,roadblockwidthheight)){
+                        lostLife();
+                    }
+                    circlex = tempx;
+                    circley = tempy;
+                    refreshScreen(circlex, circley, circler);
+                    if(up==1){
+                        window.setTimeout(jump, 10*roadblkmvrtime);
+                    }
+                }
+                 
+                function moveRoadBlk(){
+                    roadblkx-=movex;
+                    if(roadblkx<=0){
+                        roadblkx = windowwidth-roadblockwidthheight-4;
+                    }                    
+                    refreshScreen(circlex, circley, circler);
+                    if(detectCollision(circlex,circley,circler,roadblkx,roadblky,roadblockwidthheight)){
+                        lostLife();
+                    }
+                    timeoutID = window.setTimeout(moveRoadBlk, 50);
+                }
+                
+                function detectCollision(tx,ty,tr,rx,ry,rr){                    
+                    if((tx+tr<rx)||(ty+tr<ry)||(tx+tr>rx+rr)||(ty+tr>ry+rr)){                       
+                        return false;
+                    }
+                   
+                    return true;
+                }
+                
+                function lostLife(){
+                    alert("Try and avoid the Road blocks. Start over Again");
+                    startGame();
+                }
+       
+                
+                function jump(){
+                    tempx=circlex;
+                    tempy=circley;
+                    tempy += movey;
+                    tempx += movex;
+                    playareaxymin=circler+1;
+                    playareaymax = (roadfromtop-roadwidth/2-circler-2);
+                    playareaxmax = (windowwidth-circler-6);
+                    tempy = tempy.clamp(playareaxymin,playareaymax);
+                    tempx = tempx.clamp(playareaxymin,playareaxmax);                    
+                    if(detectCollision(tempx,tempy,circler,roadblkx,roadblky,roadblockwidthheight)){
+                        lostLife();
+                    }
+                    circlex = tempx;
+                    circley = tempy;
+                    refreshScreen(circlex, circley, circler);
+                }
+                
+                Number.prototype.clamp = function(min, max) {
+                    return Math.min(Math.max(this, min), max);
+                };
+            }
+        </script>
+        <style type="text/css">
+
+            * { margin:0; padding:0; } /* to remove the top and left whitespace */
+
+            html, body { width:100%; height:100%; } /* just to be sure these are full screen*/
+
+            canvas { display:block;border: 2px solid #000; } /* To remove the scrollbars */
+            h1 { font-size: 140%; font-weight:normal; color: #036; border-bottom: 1px solid #ccc; }
+        </style>
   </head>
 
-  <body>
+  <body onload="drawShape();">
 
     <!-- HEADER -->
     <div id="header_wrap" class="outer">
@@ -28,38 +249,12 @@
         </header>
     </div>
 
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
-        <h3>Welcome to GitHub Pages.</h3>
+        <div>
+            <h1 class="header">Traveller</h1>
+            <canvas id="gamer"></canvas>
+            <h1 class="footer">Traveller</h1>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
-
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
-</code></pre>
-
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
-
-<h3>Designer Templates</h3>
-
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
-
-<h3>Rather Drive Stick?</h3>
-
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
-
-<h3>Authors and Contributors</h3>
-
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
-
-<h3>Support or Contact</h3>
-
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
-      </section>
-    </div>
-
+        </div>
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
       <footer class="inner">
